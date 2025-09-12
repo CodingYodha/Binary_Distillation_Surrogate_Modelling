@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.metrics import r2_score, mean_squared_error
+from sklearn.metrics import r2_score, mean_squared_error,mean_absolute_error 
 from utils import (
     load_data_block_split, 
     load_data_gap_split,
@@ -58,16 +58,17 @@ def run_all_diagnostics():
             
         r2 = r2_score(y_true, y_pred)
         mse = mean_squared_error(y_true, y_pred)
+        mae = mean_absolute_error(y_true, y_pred)
         
-        metrics[model_name] = {'R2_Score': r2, 'MSE': mse}
+        metrics[model_name] = {'R2_Score': r2, 'MSE': mse , 'MAE':mae}
 
         # Bounds Check for xD
         if target == 'xD':
             violations = np.sum((y_pred < 0) | (y_pred > 1))
             metrics[model_name]['Bounds_Violations'] = int(violations)
-            print(f"{model_name}: R2={r2:.4f}, MSE={mse:.2e}, Bounds Violations={violations}")
+            print(f"{model_name}: R2={r2:.4f}, MSE={mse:.2e}, MAE={mae:.2e}, Bounds Violations={violations}")
         else:
-            print(f"{model_name}: R2={r2:.4f}, MSE={mse:.2e}")
+            print(f"{model_name}: R2={r2:.4f}, MSE={mse:.2e}, MAE={mae:.2e}")
     
     # --- 2. Error Slices (High-Purity Region) ---
     print("\nCalculating metrics for high-purity slice (xD >= 0.95)...")
@@ -94,9 +95,11 @@ def run_all_diagnostics():
 
             r2_hp = r2_score(y_true_hp, y_pred_hp)
             mse_hp = mean_squared_error(y_true_hp, y_pred_hp)
+            mae_hp = mean_absolute_error(y_true_hp, y_pred_hp)
             metrics[f'{model_prefix}_xD']['R2_Score_High_Purity'] = r2_hp
             metrics[f'{model_prefix}_xD']['MSE_High_Purity'] = mse_hp
-            print(f"{model_prefix}_xD (High Purity): R2={r2_hp:.4f}, MSE={mse_hp:.2e}")
+            metrics[f'{model_prefix}_xD']['MAE_High_Purity'] = mae_hp
+            print(f"{model_prefix}_xD (High Purity): R2={r2_hp:.4f}, MSE={mse_hp:.2e}, MAE={mae_hp:.2e}")
     else:
         print("No high-purity data in the test set to evaluate.")
 
