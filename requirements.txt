@@ -7,3 +7,4 @@ xgboost
 graphviz 
 tensorflow 
 joblib
+scikit-optimize
