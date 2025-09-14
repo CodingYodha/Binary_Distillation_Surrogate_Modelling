@@ -8,12 +8,12 @@ def prepare_data():
     """
     print("Starting data preparation...")
     
-    # Define paths
+
     raw_data_path = 'data/raw/'
     processed_data_path = 'data/processed/'
     output_file = os.path.join(processed_data_path, 'master_data.csv')
 
-    # Ensure processed directory exists
+ 
     os.makedirs(processed_data_path, exist_ok=True)
 
     datasets = [f for f in os.listdir(raw_data_path) if f.endswith('.csv')]
@@ -38,10 +38,10 @@ def prepare_data():
         print("Error: No dataframes were created. Please check raw data files.")
         return
 
-    # Combine all dataframes
+
     combined_df = pd.concat(df_list, ignore_index=True)
 
-    # Rename columns from DWSIM output to simpler names
+  
     column_map = {
         'DCOL-1 - Condenser_Specification_Value': 'R',
         'DCOL-1 - Reboiler_Specification_Value': 'B',
@@ -49,14 +49,13 @@ def prepare_data():
         'DCOL-1 - Reboiler Duty (kcal/h)': 'QR'
     }
     
-    # Select and rename necessary columns
+
     final_df = combined_df[list(column_map.keys()) + ['xF']]
     final_df = final_df.rename(columns=column_map)
-    
-    # Ensure final columns are in the desired order
+
     final_df = final_df[['xF', 'R', 'B', 'xD', 'QR']]
 
-    # Save the processed data
+   
     final_df.to_csv(output_file, index=False)
     print(f"Successfully created master dataset at {output_file}")
     print(f"Total data points: {len(final_df)}")

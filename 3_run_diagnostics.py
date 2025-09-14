@@ -17,9 +17,9 @@ def run_all_diagnostics():
     Loads all trained models and scalers, evaluates them on test data,
     runs all required physical consistency checks, and saves plots and metrics.
     """
-    print("--- Running All Diagnostics ---")
+    print(" Running All Diagnostics ")
     
-    # --- Load Data, Models, and Scalers ---
+    #  Load Data, Models, and Scalers 
     print("Loading data, models, and scalers...")
     X_train, X_test, y_train, y_test = load_data_block_split()
     
@@ -39,7 +39,7 @@ def run_all_diagnostics():
     X_test_sc = scaler_X.transform(X_test)
     metrics = {}
 
-    # --- 1. Performance Metrics & Bounds Check ---
+    #  1. Performance Metrics & Bounds Check 
     print("\nCalculating performance metrics...")
     for model_name, model in models.items():
         target = 'xD' if 'xD' in model_name else 'QR'
@@ -70,7 +70,7 @@ def run_all_diagnostics():
         else:
             print(f"{model_name}: R2={r2:.4f}, MSE={mse:.2e}, MAE={mae:.2e}")
     
-    # --- 2. Error Slices (High-Purity Region) ---
+    # 2. Error Slices (High-Purity Region) 
     print("\nCalculating metrics for high-purity slice (xD >= 0.95)...")
     high_purity_mask = y_test['xD'] >= 0.95
     X_test_hp = X_test[high_purity_mask]
@@ -105,7 +105,7 @@ def run_all_diagnostics():
 
     save_metrics(metrics, 'results/metrics.json')
 
-    # --- 3. EDA Plots ---
+    #  3. EDA Plots 
     print("\nGenerating EDA plots...")
     df = pd.read_csv('data/processed/master_data.csv')
     df_unique = df.drop_duplicates(subset=['R', 'B'])
@@ -119,7 +119,7 @@ def run_all_diagnostics():
     ax2.set_title('EDA Heatmap: QR vs (R, B)')
     save_plot(fig_heatmap, 'results/plots/eda_heatmaps.png')
 
-    # --- 4. Generate All Plots ---
+    # 4. Generate All Plots
     print("\nGenerating diagnostic plots...")
 
     # a) Parity Plots
@@ -243,7 +243,7 @@ def run_all_diagnostics():
     
     save_plot(fig_sens, 'results/plots/diag_sensitivity_xF.png')
 
-    # --- 5. Physical Diagnostics ---
+    # 5. Physical Diagnostics 
     print("\nRunning physical consistency checks...")
     
     # a) Monotonicity Check (xD vs. R)
@@ -358,7 +358,7 @@ def run_all_diagnostics():
     
     save_plot(fig_extrap, 'results/plots/diag_extrapolation.png')
     
-    # --- 6. Generalization Test ---
+    #  6. Generalization Test 
     print("\nRunning generalization test on held-out region...")
     try:
         _, X_test_gap, _, y_test_gap = load_data_gap_split()
@@ -406,7 +406,7 @@ def run_all_diagnostics():
         print(f"Generalization test failed: {e}")
         print("Continuing with remaining diagnostics...")
 
-    print("\n--- All Diagnostics Complete ---")
+    print("\nAll Diagnostics Complete ")
 
 if __name__ == '__main__':
     run_all_diagnostics()

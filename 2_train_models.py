@@ -22,10 +22,10 @@ def train_and_tune_models():
     Loads data using a block split, tunes hyperparameters using Bayesian Optimization,
     trains the final models, and saves them. Also trains models for the generalization test.
     """
-    print("--- Starting Model Training and Tuning ---")
+    print("Starting Model Training and Tuning ")
 
-    # --- 1. Standard Training using Block Split ---
-    print("\n--- Phase 1: Standard Model Training ---")
+
+    print("\n Phase 1: Standard Model Training ")
     X_train, X_test, y_train, y_test = load_data_block_split()
     
     # Separate targets
@@ -45,7 +45,7 @@ def train_and_tune_models():
     y_train_xD_sc = scaler_y_xD.transform(y_train_xD)
     y_train_QR_sc = scaler_y_QR.transform(y_train_QR)
 
-    # --- Polynomial Regression Tuning & Training ---
+    #  Polynomial Regression Tuning & Training 
     print("\nTuning Polynomial Regression...")
     poly_pipeline = Pipeline([
         ("poly", PolynomialFeatures(include_bias=False)),
@@ -65,7 +65,7 @@ def train_and_tune_models():
     print(f"Best Poly QR params: {bayes_search_poly_QR.best_params_}")
     save_sklearn_model(bayes_search_poly_QR.best_estimator_, 'models/polynomial_model_QR.joblib')
 
-    # --- XGBoost Tuning & Training ---
+    #  XGBoost Tuning & Training 
     print("\nTuning XGBoost...")
     param_space_xgb = {
         'n_estimators': Integer(100, 1000),
@@ -86,7 +86,7 @@ def train_and_tune_models():
     print(f"Best XGBoost QR params: {bayes_search_xgb_QR.best_params_}")
     save_sklearn_model(bayes_search_xgb_QR.best_estimator_, 'models/xgboost_model_QR.joblib')
 
-    # --- ANN Training (fixed architecture as tuning is more complex) ---
+    #  ANN Training 
     print("\nTraining ANNs...")
     # Model for xD
     ann_model_xD = Sequential([
@@ -110,10 +110,10 @@ def train_and_tune_models():
     ann_model_QR.fit(X_train_sc, y_train_QR_sc, epochs=300, batch_size=8, verbose=0)
     save_tf_model(ann_model_QR, 'models/ann_model_QR.h5')
     
-    print("\n--- Standard model training complete. ---")
+    print("\n Standard model training complete. ")
 
-    # --- 2. Generalization Test Training using Gap Split ---
-    print("\n--- Phase 2: Generalization (Gap) Model Training ---")
+    #  2. Generalization Test Training using Gap Split 
+    print("\n Phase 2: Generalization (Gap) Model Training ")
     X_train_gap, _, y_train_gap, _ = load_data_gap_split()
     y_train_xD_gap = y_train_gap[['xD']]
     y_train_QR_gap = y_train_gap[['QR']]
@@ -145,11 +145,11 @@ def train_and_tune_models():
     ann_model_xD_gap.compile(optimizer=Adam(learning_rate=0.001), loss='mse')
     ann_model_xD_gap.fit(X_train_gap_sc, y_train_xD_gap_sc, epochs=300, batch_size=8, verbose=0)
     save_tf_model(ann_model_xD_gap, 'models/ann_model_xD_gap.h5')
-    # Save the specific scalers for this test
+
     save_sklearn_model(scaler_X_gap, 'models/scaler_X_gap.joblib')
     save_sklearn_model(scaler_y_xD_gap, 'models/scaler_y_xD_gap.joblib')
     
-    print("\n--- All training phases complete. ---")
+    print("\n All training phases complete. ")
 
 if __name__ == '__main__':
     train_and_tune_models()
