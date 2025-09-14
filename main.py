@@ -1,5 +1,5 @@
 def main():
-    print("Hello from binary-distillation-surrogate-modelling!")
+    print(" ")
 
 
 if __name__ == "__main__":
