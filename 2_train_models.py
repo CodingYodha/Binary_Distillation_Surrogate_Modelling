@@ -1,5 +1,8 @@
+# --- START OF FILE 2_train_models.py ---
+
 import pandas as pd
 import numpy as np
+import sys
 from sklearn.preprocessing import StandardScaler, PolynomialFeatures
 from sklearn.linear_model import LinearRegression
 from sklearn.pipeline import Pipeline
@@ -19,15 +22,23 @@ from utils import (
 
 def train_and_tune_models():
     """
-    Loads data using a block split, tunes hyperparameters using Bayesian Optimization,
-    trains the final models, and saves them. Also trains models for the generalization test.
+    Loads data with engineered features using a block split, tunes hyperparameters 
+    using Bayesian Optimization, trains the final models, and saves them. 
+    Also trains models for the generalization test.
     """
-    print("--- Starting Model Training and Tuning ---")
+    print("--- Starting Model Training and Tuning on Featured Data ---")
 
     # --- 1. Standard Training using Block Split ---
     print("\n--- Phase 1: Standard Model Training ---")
     X_train, X_test, y_train, y_test = load_data_block_split()
     
+    # Exit if data loading failed
+    if X_train is None:
+        print("Halting training due to data loading error.")
+        sys.exit(1)
+        
+    print(f"Training with {X_train.shape[1]} features: {X_train.columns.tolist()}")
+
     # Separate targets
     y_train_xD = y_train[['xD']]
     y_train_QR = y_train[['QR']]
@@ -51,16 +62,18 @@ def train_and_tune_models():
         ("poly", PolynomialFeatures(include_bias=False)),
         ("linreg", LinearRegression())
     ])
-    param_space_poly = {'poly__degree': Integer(2, 8)}
+    # Note: High-degree polynomials can become very slow and unstable with more features.
+    # A smaller degree range is advisable.
+    param_space_poly = {'poly__degree': Integer(2, 4)} 
     
     # Tune for xD
-    bayes_search_poly_xD = BayesSearchCV(poly_pipeline, param_space_poly, n_iter=15, cv=5, n_jobs=-1, random_state=42)
+    bayes_search_poly_xD = BayesSearchCV(poly_pipeline, param_space_poly, n_iter=10, cv=5, n_jobs=-1, random_state=42)
     bayes_search_poly_xD.fit(X_train, y_train_xD)
     print(f"Best Poly xD params: {bayes_search_poly_xD.best_params_}")
     save_sklearn_model(bayes_search_poly_xD.best_estimator_, 'models/polynomial_model_xD.joblib')
     
     # Tune for QR
-    bayes_search_poly_QR = BayesSearchCV(poly_pipeline, param_space_poly, n_iter=15, cv=5, n_jobs=-1, random_state=42)
+    bayes_search_poly_QR = BayesSearchCV(poly_pipeline, param_space_poly, n_iter=10, cv=5, n_jobs=-1, random_state=42)
     bayes_search_poly_QR.fit(X_train, y_train_QR)
     print(f"Best Poly QR params: {bayes_search_poly_QR.best_params_}")
     save_sklearn_model(bayes_search_poly_QR.best_estimator_, 'models/polynomial_model_QR.joblib')
@@ -76,13 +89,13 @@ def train_and_tune_models():
     
     # Tune for xD
     bayes_search_xgb_xD = BayesSearchCV(XGBRegressor(random_state=42), param_space_xgb, n_iter=30, cv=5, n_jobs=-1, random_state=42)
-    bayes_search_xgb_xD.fit(X_train, y_train_xD)
+    bayes_search_xgb_xD.fit(X_train, y_train_xD.values.ravel()) # .ravel() for XGBoost
     print(f"Best XGBoost xD params: {bayes_search_xgb_xD.best_params_}")
     save_sklearn_model(bayes_search_xgb_xD.best_estimator_, 'models/xgboost_model_xD.joblib')
 
     # Tune for QR
     bayes_search_xgb_QR = BayesSearchCV(XGBRegressor(random_state=42), param_space_xgb, n_iter=30, cv=5, n_jobs=-1, random_state=42)
-    bayes_search_xgb_QR.fit(X_train, y_train_QR)
+    bayes_search_xgb_QR.fit(X_train, y_train_QR.values.ravel()) # .ravel() for XGBoost
     print(f"Best XGBoost QR params: {bayes_search_xgb_QR.best_params_}")
     save_sklearn_model(bayes_search_xgb_QR.best_estimator_, 'models/xgboost_model_QR.joblib')
 
@@ -96,7 +109,7 @@ def train_and_tune_models():
         Dense(1)
     ])
     ann_model_xD.compile(optimizer=Adam(learning_rate=0.001), loss='mse')
-    ann_model_xD.fit(X_train_sc, y_train_xD_sc, epochs=300, batch_size=8, verbose=0)
+    ann_model_xD.fit(X_train_sc, y_train_xD_sc, epochs=300, batch_size=16, verbose=0, validation_split=0.1)
     save_tf_model(ann_model_xD, 'models/ann_model_xD.h5')
 
     # Model for QR
@@ -107,7 +120,7 @@ def train_and_tune_models():
         Dense(1)
     ])
     ann_model_QR.compile(optimizer=Adam(learning_rate=0.001), loss='mse')
-    ann_model_QR.fit(X_train_sc, y_train_QR_sc, epochs=300, batch_size=8, verbose=0)
+    ann_model_QR.fit(X_train_sc, y_train_QR_sc, epochs=300, batch_size=16, verbose=0, validation_split=0.1)
     save_tf_model(ann_model_QR, 'models/ann_model_QR.h5')
     
     print("\n--- Standard model training complete. ---")
@@ -115,6 +128,11 @@ def train_and_tune_models():
     # --- 2. Generalization Test Training using Gap Split ---
     print("\n--- Phase 2: Generalization (Gap) Model Training ---")
     X_train_gap, _, y_train_gap, _ = load_data_gap_split()
+    
+    if X_train_gap is None:
+        print("Halting generalization training due to data loading error.")
+        sys.exit(1)
+        
     y_train_xD_gap = y_train_gap[['xD']]
     y_train_QR_gap = y_train_gap[['QR']]
 
@@ -127,7 +145,7 @@ def train_and_tune_models():
     
     # XGBoost
     best_xgb_xD = bayes_search_xgb_xD.best_estimator_
-    best_xgb_xD.fit(X_train_gap, y_train_xD_gap)
+    best_xgb_xD.fit(X_train_gap, y_train_xD_gap.values.ravel())
     save_sklearn_model(best_xgb_xD, 'models/xgboost_model_xD_gap.joblib')
 
     # ANN (requires re-scaling)
@@ -143,7 +161,7 @@ def train_and_tune_models():
         Dense(1)
     ])
     ann_model_xD_gap.compile(optimizer=Adam(learning_rate=0.001), loss='mse')
-    ann_model_xD_gap.fit(X_train_gap_sc, y_train_xD_gap_sc, epochs=300, batch_size=8, verbose=0)
+    ann_model_xD_gap.fit(X_train_gap_sc, y_train_xD_gap_sc, epochs=300, batch_size=16, verbose=0)
     save_tf_model(ann_model_xD_gap, 'models/ann_model_xD_gap.h5')
     # Save the specific scalers for this test
     save_sklearn_model(scaler_X_gap, 'models/scaler_X_gap.joblib')
@@ -153,3 +171,5 @@ def train_and_tune_models():
 
 if __name__ == '__main__':
     train_and_tune_models()
+
+# --- END OF FILE 2_train_models.py ---
